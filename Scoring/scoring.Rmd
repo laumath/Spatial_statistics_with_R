@@ -1,0 +1,522 @@
+---
+title: "Scoring"
+author: "Laura Piñeros"
+date: "16/3/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list=ls())
+```
+
+# Carga de librarías ----
+
+#install.packages("mfx")
+#install.packages("stargazer")
+#install.packages("scorecard")
+#install.packages("devtools")
+#devtools::install_github("shichenxie/scorecard")
+
+```{r}
+#+ Traditional Credit Scoring Using Logistic Regression
+library(stargazer)#sirve para sacar modelos de regresion 
+library(mfx) # para efectos marginales
+library(scorecard)
+library(gmodels) #CrossTable()--tablas de contingencia 
+library(dplyr)
+library(corrplot)
+```
+
+
+```{r}
+#Cargar datos (banco alemán)
+#+ load germancredit data
+data("germancredit")
+#' #Visualización
+#View(germancredit)
+head(germancredit)
+```
+
+#+ descripción de las variables ----
+# https://archive.ics.uci.edu/ml/datasets/Statlog+(German+Credit+Data)
+#?germancredit
+
+
+# El conjunto de datos tiene 1000 observaciones y 21 variables:  
+  
+#  - **creditability** Es la variable objetivo que califica a los 1000 clientes como de buenos o malos en función de su riesgo de crédito.
+
+
+
+# Las 20 restantes variables (7 numéricas y 13 categóricas) son los atributos o características observadas de esos clientes que se utilizarán para predecir la probabilidad de que los clientes cometan un impago de sis créditos, esto es, de que sean malos clientes. La descripción de estas 20 variables es la siguiente:
+  
+#  - Attribute 1: (qualitative) **Status of existing checking account o cuenta corriente** (Estado de la cuenta corriente actual)
+#   - A11 : ... < 0 DM (marcos alemanes )
+#   - A12 : 0 <= ... < 200 DM 
+#   - A13 : ... >= 200 DM / salary assignments for at least 1 year 
+#   - A14 : no checking account 
+
+#- Attribute 2: (numerical) **Duration in month** (Duración en meses)
+  
+#  - Attribute 3: (qualitative) **Credit history**  (Historia crediticia)
+#     - A30 : no credits taken/ all credits paid back duly (devultos sin mora)
+#     - A31 : all credits at this bank paid back duly 
+#     - A32 : existing credits paid back duly till now 
+#     - A33 : delay in paying off in the past 
+#     - A34 : critical account/ other credits existing (not at this bank) 
+
+# - Attribute 4: (qualitative) **Purpose** (Propósito)
+#     - A40 : car (new) 
+#     - A41 : car (used)
+#     - A42 : furniture/equipment
+#     - A43 : radio/television
+#     - A44 : domestic appliances
+#     - A45 : repairs
+#     - A46 : education
+#     - A47 : (vacation - does not exist?)
+#     - A48 : retraining
+#     - A49 : business
+#    - A410 : others 
+
+# - Attribute 5: (numerical) **Credit amount** (monto del credito)
+  
+# - Attribute 6: (qualitative) **Savings account/bonds** (Cuenta de ahorros/bonos)
+#    - A61 : ... < 100 DM
+#    - A62 : 100 <= ... < 500 DM
+#    - A63 : 500 <= ... < 1000 DM
+#    - A64 : .. >= 1000 DM 
+#    - A65 : unknown/ no savings account 
+
+# - Attribute 7: (qualitative) **Present employment since** (Empleo actual y desde cuando )
+#     - A71 : unemployed 
+#     - A72 : ... < 1 year 
+#     - A73 : 1 <= ... < 4 years 
+#     - A74 : 4 <= ... < 7 years 
+#     - A75 : .. >= 7 years 
+
+# - Attribute 8: (numerical) **Installment rate in percentage of disposable income** (carga de la deuda sobre el porcentaje de renta mensual  )
+  
+#  - Attribute 9: (qualitative) **Personal status and sex** (Estado civil y sexo )
+#     - A91 : male : divorced/separated
+#     - A92 : female : divorced/separated/married
+#     - A93 : male : single
+#     - A94 : male : married/widowed
+#     - A95 : female : single 
+
+# - Attribute 10: (qualitative) **Other debtors / guarantors**(Otras deudoras/garantes)
+#    - A101 : none
+#    - A102 : co-applicant
+#    - A103 : guarantor 
+
+# - Attribute 11: (numerical) **Present residence since** (Residencia actual y desde cuando )
+  
+# - Attribute 12: (qualitative) **Property**(Propiedades)
+#     - A121 : real estate
+#     - A122 : if not A121 : building society savings agreement/ life insurance
+#     - A123 : if not A121/A122 : car or other, not in attribute 6 
+#     - A124 : unknown / no property 
+
+# - Attribute 13: (numerical) **Age in years** (Edad en años )
+  
+# - Attribute 14: (qualitative) **Other installment plans** Otros pagos por plazos
+#      - A141 : bank
+#      - A142 : stores
+#      - A143 : none 
+
+# - Attribute 15: (qualitative) **Housing**(Tipo de vivienda-alquiler-propiedad-libre)
+#      - A151 : rent 
+#      - A152 : own
+#      - A153 : for free 
+
+# - Attribute 16: (numerical) **Number of existing credits at this bank**(Número de creditos existentes en el propi banco)
+  
+# - Attribute 17: (qualitative) **Job**(Trabajo- tipo de profesión)
+#   - A171 : unemployed/ unskilled - non-resident
+#   - A172 : unskilled - resident
+#   - A173 : skilled employee / official
+#   - A174 : management/ self-employed/highly qualified employee/ officer 
+
+# - Attribute 18: (numerical) **Number of people being liable to provide maintenance for** (Número de personas dependientes)
+  
+# - Attribute 19: (qualitative) **Telephone**(Teléfono )
+#   - A191 : none
+#   - A192 : yes, registered under the customers name 
+
+# - Attribute 20: (qualitative) **foreign worker** (Trabajador extranjero )
+#   - A201 : yes 
+#   - A202 : no 
+
+
+```{r}
+# Descriptivo de Datos ----
+#+ summary
+summary(germancredit$creditability)
+# descriptivo de todas las variables
+#lapply(germancredit, summary) # la salid es un poco más ordenada que 
+summary(germancredit)
+```
+
+
+```{r}
+# Renombro la base de datos (no es necesario pero me sirve para trabajar con cualquier base de datos)
+
+dt<-germancredit
+str(dt)
+
+gmodels::CrossTable(dt$creditability)
+```
+
+```{r}
+# renombro creditability as y
+dt$y<-as.numeric(dt$creditability)
+
+# recodifico y= Default o Malo
+dt$y<-ifelse(dt$y==2,0,1)
+CrossTable(dt$y)
+
+# elimino el campo creditability
+dt<-dt[,-21]
+
+
+#+ bibariate tables ----
+str(dt)
+```
+Comienzo con el análisis estadístico bivariante inicial 
+
+```{r}
+# selección inicial de Varaibles ----
+#'  Selección inicial de variables
+#'  Aquí se hacer una selección inicial
+#'  por valores missing o por valores idénticos
+#'  Hasta que no se agrupen y definan las variables WOE no debería
+#'  filtrarse ningún otro criterio como IV o GINI
+
+#+ ha creado una lista dt_s. En la que el dataframe dt_s$contiene sólo las variables no eliminadas
+dt_s <- var_filter(dt, "y", iv_limit=0) #iv_limit=0 para que coja todas y sólo excluya a la missing
+dt_s <- var_filter(dt,"y", iv_limit=0, return_rm_reason = TRUE)
+# View(dt_s$rm)
+# table(dt$foreign.worker)
+
+
+#' dividimos la serie original entre entrenamiento (train) y validación (test), para trabajar por separado
+
+dt_list <- split_df(dt_s$dt, y="y", ratio = 0.7, seed = 21) # 21
+
+train <- dt_list$train 
+test <- dt_list$test
+
+prop.table(table(train$y))
+prop.table(table(test$y))
+
+```
+- return_rm_reason <- devuelve la razon por la que se ha eliminado la variable 
+- ha eliminado foreign.worker por que tiene el 95% de los datos repetidos. 
+- iv_limit <- el valor de la información de las variables guardadas debería ser >= iv_limit. El valor predeterminado es 0.02. Pero para este caso solo estamos eliminando valores missing y valores identicos por ello tomamos iv_limit=0 
+- luego divide la data en train y test, la función split_df reparte el 70% de la data en train y el 30% de la data en test 
+- Toma la proporciónd de buenos y malos clientes 
+- 30% malos clientes 
+- 70% de buenos clientes 
+
+Ahora vamos a categorizar todas la posibles variables explicativas del modelo y agrupar esas categorias de forma que maximice los valores de información. 
+- la funcion woebin calcular estructura óptima de tramificación que tiene que tener cada una de las variables numéricas, 
+```{r}
+#MANUALMENTE
+#set.seed(567)
+#index_train<-sample(1:nrow(dt_s$dt),0.7 * nrow(dt_s$dt))
+#train <- dt_s$dt[index_train, ]
+#test<- dt_s$dt[-index_train, ]
+
+
+# # woe binning con la muestra de entrenamiento (tramificación) ------
+#+ generates optimal binning for numerical,
+# factor and categorical variables using methods including tree-like segmentation or chi-square merge
+bins <- woebin(train, "y", print_step = 5)#print_step hace referencia al numero de iteraciones  
+woebin_plot(bins)
+# recordad, un Iv menor que 0.02 la variable es muy débil
+
+bins$purpose
+
+
+# Fíjate que las variables continuas se ha limitado a tramificarlas (no ha realizado un reajuste WoE) 
+
+```
+
+-por ejemplo en la variable teléfonoo, esta no nos aporta tanto pues el porcentaje de malos clientes es decir con probabilidad e impago=1 es casi igual, en efecto el  iv es =0.0024 y el tope es de 0.02 lo que indica que igual el valor de información es muy bajo. 
+
+- El numero de personas a cargo tampoco se considera que tiene un grado de significancia por que igual , el porcentaje de malos clientes es casi igual 
+
+- Para trabajo el valor de la información sigue siendo bajo 
+
+- La variable housing puede aportar un valor de información, cuando el individuo tenga la vivienda en alquiler o gratuita tiene mas propensión a tener porbabilidad de impago=1 es decir ser mal pagador. iv_limit=0.08>0.02
+
+- con la variable fiador o avalista encuentras que aporta un valor a la información ya que nos dice que si tienes uno, hay baja probabilidad de que seas de un mal pagador, disminuye riesgo de impago. 
+
+- la variable del monto del crédito, a medida que va aumentando, aumenta la probabilidad de impago. EL tipo de no linealidad que representa esta varibale es para estudiar cuando estudiemos las variables WoE
+
+## PARA REALIZAR EL ANÁLSIS MAS COMPLETO PODRIAMOS HACER EL ESTUDIO SOBRE CADA UNA DE ELLAS 
+
+sI QUISIERAMOS REALIZAR UN AJUSTE A ESA TRAMIFICACIÓN MANUALMENTE PODEMOS IR CAMBIANDO ESA ESTRUCTURA. DE LA SIGUIENTE MANERA 
+
+```{r}
+#+ binning adjustment
+# # adjust breaks interactively
+#breaks_adj = woebin_adj(train, "y", bins) 
+# # or specify breaks manually
+#breaks_adj = list(
+#  age.in.years=c(26, 35, 40),
+#  other.debtors.or.guarantors=c("none", "co-applicant%,%guarantor"))
+#bins_adj = woebin(train, y, breaks_list=breaks_adj)
+```
+
+Ahora aplicamos nuestra estructura de tramificación tanto train como a test, con la función woebin_ply, estructura bins, la que habiamos guardado previamente. 
+
+```{r}
+# Variables woe ----
+# Una vez que ya hemos determinado las tramificaciones 
+# (con bins o bins_adj), calculo los WOE
+
+train_woe <- woebin_ply(train, bins, print_step = 5)
+
+# le aplico también la tramificacion bins calculada con la muestra
+# de  entrenamiento a la muestra de validación
+test_woe <- woebin_ply(test, bins, print_step = 5)
+```
+
+AHora, con vamos a filtrar aquellas variables que no nos brindan buena información. Lo anterior para train. 
+
+```{r}
+# Selección de variables -----
+# Una vez que tenemos las variables transformadas en WOE se seleccionan
+# las variables del modelo que tengan un iv>0.02
+
+train_wf<- var_filter(train_woe,"y",return_rm_reason = TRUE)
+#View(train_wf$rm)
+train_woe<-train_wf$dt
+```
+
+Ahora filtramos variables con poca informacion es decir con iv<0.02, pero para test . Pero debo garantizar que test y train tengan la misma información 
+
+```{r}
+# Para el conjunto test en realidad debería mantener las mismas que para l conjunto 
+# train y quitar las que he quitado en train
+train_kp<-train_wf$rm$variable[is.na(train_wf$rm$rm_reason)] 
+
+train_rm<-train_wf$rm$variable[!is.na(train_wf$rm$rm_reason)]
+
+test_wf  <- var_filter(test_woe,"y",var_rm=train_rm,
+                        var_kp=train_kp,
+                       return_rm_reason = TRUE)#garantizo que tengan la misma info
+# View(test_wf$rm)
+test_woe<-test_wf$dt
+```
+
+# Ahora con 'train_woe' realizaré el entrenamiento del modelo y
+# con 'test_woe' la validación
+
+
+# Ojo que para hacer la score card deberé quitar del original las variable
+# que haya decidido quitar
+
+Con glm estimamos un modelo de regresión logistica, modelo lineal generaliado, lo aplicamos...
+```{r}
+#' # ESTIMACION
+#+ glm ------ Logistic regresion ----
+m1 <- glm( y ~ ., family = binomial(link="logit"), data = train_woe)
+summary(m1)
+
+stargazer(m1,type = 'text')
+
+# Interpretación de los coeficientes
+
+logitor( y ~ ., data = train_woe)# mfx::This function estimates a binary logistic regression model and calculates the corresponding odds ratios.
+
+logitmfx(y ~ ., data = train_woe, atmean = TRUE, robust = TRUE,) # mfx:: esta estima los efectos MArginales en la media
+```
+Porperty y housing, hacen referencia esecialmente a la misma información, es decir a la propiedad de la vivienda o si esta viviendo en renta, depronto es por que estan correlacionadas y en efecto así lo es. 
+
+CUnaod el WoE aumenta en un 1% , como se comporta dF/dx , es decir, como va cambiando la probabilidad .
+
+#+ ODDS Ratios MANUALMENTE
+# cbind(
+#   Estimate=round(coef(m1),4),OR=round(exp(coef(m1)),4)
+#      )
+# m1.or <-exp(coef(m1))
+# stargazer(m1,type="text",coef=list(m1.or),p.auto=FALSE,out="m1or.txt")
+# stargazer(m1,coef=list(m1.or),p.auto=FALSE, type='text')
+
+Modelo stepwise --resumen de todas las regresiones ,
+ 
+```{r}
+#' # Select a formula-based model by AIC
+m_step <- step(glm( y ~ ., family = binomial(link="logit"), data = train_woe), direction="backward", trace = TRUE) # modelo hacia atrás
+m2 <- eval(m_step$call)
+summary(m2)
+
+
+m_step <- step(glm( y ~ 1, family = binomial(link="logit"), data = train_woe),scope= formula(m1), direction="forward", trace = TRUE) # modelo hacia adelante
+m3 <- eval(m_step$call)
+
+
+m_step <- step(glm( y ~ ., family = binomial(link="logit"), data = train_woe), direction="both", trace = TRUE) # modelo Stepwise
+m4 <- eval(m_step$call)
+
+
+stargazer(m1,m2,m3,m4, type="text")
+
+```
+
+En principio me quedaria con este modelo, aunque surge la duda si tal ves es mucha información...nos uedamos con este. 
+
+Ahora haremos una diágnosis de modelo 
+
+```{r}
+# Diagnosis ----
+#' # performance
+#+ predicted proability
+# utilizando modelo 2 (m2) Stepwise
+train_pred <- predict(m2, type='response', train_woe) # type='response', Para predecir probabilidad
+test_pred <- predict(m2, type='response', test_woe)
+
+#mean(train$y)
+mean(train_pred)#probabilidad media de impago para train
+mean(test_pred)#probabilidad media de impago para test
+
+
+#' # ks & roc plot
+perf_eva(label=train$y, pred=train_pred,title = "train", confusion_matrix = TRUE, show_plot = c('ks','roc','f1', 'density'))
+
+
+# La validación siempre con la muestra test
+perf_eva(label=test$y, pred=test_pred, title = "test", confusion_matrix = TRUE, show_plot = c('ks','roc','f1', 'density'))
+perf_eva(label=test$y, pred=test_pred, title = "test", confusion_matrix = TRUE, show_plot = c('ks','roc'))
+mean(test_pred)
+```
+# The F1 score (also F-score or F-measure) is a measure 
+# of a test's accuracy. It considers both the precision p 
+# and the recall r of the test to compute the score: p is 
+# the number of correct positive results divided by the 
+# number of all positive results returned by the classifier,
+# and r is the number of correct positive results divided by
+# the number of all relevant samples (all samples that should
+# have been identified as positive). 
+# The F1 score is the harmonic mean of the precision and recall,
+# where an F1 score reaches its best value at 1 (perfect precision
+# and recall) and worst at 0
+
+
+# se podría encontrar el máximo utilizando optimize
+# library(MLmetrics)
+# F1_Score(y_true=train$y, y_pred=train_predconf, positive = NULL)
+
+# f1max<-function(y_true0, y_prob0, cuttoff0){
+#   require(MLmetrics)
+#   y_pred0<-ifelse(y_prob<=cuttoff,0,1)
+#   F1value<-F1_Score(y_true=y_true0, y_pred=y_pred0, positive = "1")
+#   return(F1value)  
+# }
+# f1obj<-optimize(f1max, y_true=train$y, y_prob=train_pred, interval=c(0,1), maximum =TRUE)
+# cutoff<-1-f1obj$objective
+
+AHora veamos como puedo construir la matriz de confusión manualmente, 
+
+
+```{r}
+cuttoff<-mean(train$y) # o máximo F1
+cuttoff
+#cuttoff<-0.5
+
+# creo los pronósticos con el cuttoff
+train_predconf<-ifelse(train_pred<cuttoff,0,1)
+
+test_predconf<-ifelse(test_pred<cuttoff,0,1)
+
+#' # Create confusion matrix
+conf_matrix<-table(test$y,test_predconf)
+conf_matrix
+accuracy<-(conf_matrix[1,1]+conf_matrix[2,2])/sum(conf_matrix)
+accuracy
+```
+Es mejor basandose en el indicador d ela curva ROC. 
+
+```{r}
+#' # score
+
+points0_0 <- 600
+odds0_0 <- 1/20
+pdo_0 <- 50
+```
+
+# Transformación lineal según apuntes
+# score= Offset - Factor *ln(odds)
+# Factor= (pdo_0/log(2))
+# Offset = points0_0+(pdo_0/log(2))*log(odds0_0)
+
+
+```{r}
+card <- scorecard(bins, m2, points0 = points0_0, odds0 = odds0_0, pdo = pdo_0)
+card
+
+card$logamount
+
+
+#' ## credit score, only_total_score = TRUE
+cuttoff_score<-points0_0+(pdo_0/log(2))*log(odds0_0) - (pdo_0/log(2)) *log((cuttoff)/(1-cuttoff))
+cuttoff_score
+
+train_scoreT <- scorecard_ply(train, card, print_step = 0, only_total_score = FALSE)
+# para obtener la puntuaciónse suma los puntos al Offset-b0*Factor (ver apuntes)
+# points0_0+(pdo_0/log(2))*log(odds0_0)-coefficients(m2)[1]*(pdo_0/log(2))
+
+train_score <- scorecard_ply(train, card, print_step = 0)
+test_score <- scorecard_ply(test, card, print_step = 0)
+
+```
+
+- Por ejemplo para housin tipo own se reducia mucho la probabilidad de impago, y en efecto la puntuación es de 8 . 
+
+```{r}
+
+train$score<-train_score
+train$prob<-train_pred
+train_out<-cbind(train,train_scoreT)
+
+
+View(data.frame(test_score,test_pred))
+```
+
+Si vemos la tabla de test, los primeros son individuos que tienen una probabilidad muy pequeña de impago y por tanto tienen una puntuación elevada , y a medida que va aumentando esa probabilidad de impago la puntución se reduce . 
+
+Habimos puesto 30% como punto de corte, es decir 443.4708, entonces marcaria el punto de aprobados y no aprobados , entonces todos aquellos clientes que tengan mas de 443 puntos estarian aprobados y menos de 443 estaria en suspenso. 
+
+AHora, veamos el idicador si ajusta bien o no. 
+
+#' # psi (population stability index)
+# Es una medida de diferencia en la distribución de dos muestras
+# en nuestro caso entre la muestra test y entrenamiento (pero se aplica
+# para ver cuando comienzan a verse diferencias con la predicciones de 
+# nuestro modelo con la muestra -train- y los nuevos datos que vayan entrando,
+# .... para detectar cuándo nustro modelo necesita una revisión)
+
+Puntuación del estadistico PSI =0.027 
+NOTA: Siempre que este por debajo de 0.10 podemos considerar que no hay diferencia entre la muestra train y la muestra test 
+
+```{r}
+perf_psi(
+  score = list(train = train_score, test = test_score),
+  label = list(train = train[,"y"], test = test[, "y"]),
+  x_limits = c(250, 700),
+  x_tick_break = 50
+)
+```
+
+
+
+
+
+
+
+
