@@ -1,0 +1,134 @@
+---
+title: "Puntos_leaflet"
+author: "Laura Piñeros"
+date: "2022"
+output:
+  html_document:
+    theme: spacelab
+    highlight: tango
+    fig_width: 7
+    fig_height: 6
+    fig_caption: yes
+    code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: no
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r warning=FALSE}
+suppressPackageStartupMessages({
+library(leaflet)
+library(sf)
+library(sp)
+library(dplyr)
+library(rgdal)
+})
+```
+
+***
+# Carga de Mapas Interactivos 
+
+```{r warning=FALSE}
+CCAA_MAP<-readOGR("C:/Users/Laura/Documents/Mineria_3/2.Espacial/Estadistica Espacial en R/cartografias","CCAA_SALARIOS")
+summary(CCAA_MAP)
+```
+
+***
+# ¿Que hace la libreria leaflet?
+
+```{r}
+leaflet(CCAA_MAP,options = leafletOptions(attributionControl = FALSE)) %>%
+  addPolygons(data=CCAA_MAP, stroke=TRUE, opacity = 0.5, fillOpacity = 0.7,color="grey10",
+              fillColor = ~colorQuantile("YlOrBr", n=9, SALARIO, na.color = "white")(SALARIO))
+```
+
+
+```{r}
+leaflet(CCAA_MAP,options = leafletOptions(attributionControl = FALSE)) %>%
+  addTiles()%>%
+  addPolygons(data=CCAA_MAP, stroke=TRUE, color="grey10")
+```
+
+
+```{r}
+leaflet(CCAA_MAP,options = leafletOptions(attributionControl = FALSE)) %>%
+  addTiles()%>%
+  addPolygons(data=CCAA_MAP, stroke=TRUE, opacity = 0.25, fillOpacity = 0.27,color="grey10",
+              fillColor = ~colorQuantile("YlOrBr", n=9, SALARIO, na.color = "white")(SALARIO))
+```
+
+
+Las anteriores imagenes representan la distribución de salarios por provincia. 
+
+
+```{r}
+#Librerias para hacerlo interactivo
+suppressPackageStartupMessages({
+library(tmaptools)
+library(tmap)
+})
+```
+
+***
+
+# Mapas Interactivos
+
+```{r warning=FALSE}
+tm_shape(CCAA_MAP) +
+  tm_fill(palette ="Blues",col = "SALARIO",style = "quantile")
+```
+
+
+***
+# Situar Marcadores con leaflet
+
+
+```{r}
+datos_map<-data.frame(longx=c(-3.741274,-3.718765,-3.707027,-3.737117, -3.674605,-3.709559 ),
+                      laty=c(40.38479, 40.36751, 40.45495,40.44672, 40.50615, 40.42059))
+
+awesome <- makeAwesomeIcon(
+  icon = "circle",
+  iconColor = "White",
+  markerColor = "blue",
+  library = "fa"
+)
+
+m <-leaflet(datos_map) %>%
+  addTiles()%>%  
+  addAwesomeMarkers(~longx,~laty,  popup = ~paste(laty, longx, sep = '<br/>'), icon = awesome)
+
+m 
+```
+
+
+```{r}
+objetivo<-"Facultad de Estudios Estadísticos, Madrid"
+geo_output<-geocode_OSM(objetivo, details=TRUE, return.first.only = TRUE, as.data.frame = T )
+
+laty=geo_output$lat
+lonx=geo_output$lon
+
+
+
+awesome <- makeAwesomeIcon(
+  icon = "circle",
+  iconColor = "White",
+  markerColor = "blue",
+  library = "fa"
+)
+
+leaflet(data.frame(lonx,laty)) %>% 
+  addTiles() %>% 
+  addAwesomeMarkers(lng=~lonx, lat=~laty,icon = awesome)
+
+```
+
